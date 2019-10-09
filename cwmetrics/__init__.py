@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Dict, Union, List
+from functools import wraps
+from typing import Dict, Union, List, Callable
 
 import boto3
 import botocore.exceptions
@@ -84,7 +85,9 @@ class CloudWatchMetricsBuffer(object):
             metric['Timestamp'] = datetime.utcnow()
 
     def send(self):
-        """Send accumulated metrics to CloudWatch"""
+        """
+        Send buffered metrics to CloudWatch
+        """
         while len(self.metrics) > 0:
             # put_metric_data is limited to 20 messages at a time, so the list of metrics is sent in 20-message chunks
             metrics = self.metrics[:20]
@@ -96,3 +99,62 @@ class CloudWatchMetricsBuffer(object):
                 else:
                     raise
             del self.metrics[:20]
+
+    def timeit(self, metric_name: str, dimensions: Dict[str, str] = None):
+        """
+        Decorator for measuring execution time of the function in milliseconds.
+        :param metric_name: string representing metric name
+        :param dimensions: dict[str,str] | list[dict[str,str]] | tuple[dict[str,str]]
+        :return: decorated function
+        """
+
+        def timeit_decorator(func: Callable):
+            @wraps(func)
+            @self._nested
+            def wrapper(*args, **kwargs):
+                start = datetime.now()
+                ret = func(*args, **kwargs)
+                duration = (datetime.now() - start).total_seconds() * 1000  # milliseconds
+                self.put_value(metric_name=metric_name, value=duration, dimensions=dimensions, unit='Milliseconds')
+                return ret
+            return wrapper
+        return timeit_decorator
+
+    def count(self, metric_name: str, count_value: int = 1, dimensions: Dict[str, str] = None):
+        """
+        Decorator for counting execution of functions.
+        :param metric_name: string representing metric name
+        :param count_value: Counter is incremented by 1 by default.
+        :param dimensions:
+        :return:
+        """
+        def count_decorator(func: Callable):
+            @wraps(func)
+            @self._nested
+            def wrapper(*args, **kwargs):
+                ret = func(*args, **kwargs)
+                self.put_value(metric_name=metric_name, value=count_value, dimensions=dimensions)
+                return ret
+            return wrapper
+        return count_decorator
+
+    def _nested(self, func: Callable):
+        """
+        Internal decorator used to count nesting level whenever decorators (count, timeit) are used. We want to buffer
+        values until we are done with execution of the decorated function. Nesting level is counted and when it reaches
+        0, send() will be called to flush all the metrics. For example, you may want to use @timeit(), @count() and
+        @count(with some dimensions), and also, decorated function may call another decorated function. Metrics will be
+        sent to CloudWatch only when last decorated function executes.
+
+        :param func: function
+        :return: wrapped function
+        """
+        def wrapper(*args, **kwargs):
+            self.nesting_level += 1
+            ret = func(*args, **kwargs)
+            self.nesting_level -= 1
+            # no closures above this one, send metrics now
+            if self.nesting_level == 0:
+                self.send()
+            return ret
+        return wrapper
