@@ -1,2 +1,3 @@
 # cloudwatch-metrics-buffer
-Wrapper for publishing buffered metrics to Cloudwatch
+
+This is a wrapper for publishing metrics to Cloudwatch. It will buffer metrics first, then send them in batches.  
