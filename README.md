@@ -41,6 +41,8 @@ cw = CloudWatchMetricsBuffer('Some Namespace')
 @cw.count('count_metric1')
 def func():
    ...
+   
+func()
 ```
 
 You can also decorate function multiple times. Publishing to CloudWatch is executed after outer decorator finishes:
@@ -51,6 +53,9 @@ You can also decorate function multiple times. Publishing to CloudWatch is execu
 @cw.count('requests', dimensions={'HTTP Method': 'GET'})
 def process_api_request():
    ...
+
+# CW will receive 3 metric values
+process_api_request() 
 ```
 
 This will also work:
@@ -68,4 +73,7 @@ def process_api_request():
 @cw.count('auth requests')
 def authenticate():
     ...
+    
+# all metrics (total of 6) are buffered and sent after method was executed
+process_api_request() 
 ```
