@@ -4,11 +4,12 @@ This is a wrapper library for publishing metrics to **[AWS CloudWatch](https://a
 
 While playing around with lambdas and serveless frameworks, I needed a library to help me with publishing metrics to CloudWatch in easy and elegant way. I wanted to avoid boilerplate code that polutes all my methods. Ideally, I would decorate my function to measure execution time or count. After unsuccessful search, I implemented my own.
 
-This wrapper will buffer metrics first, then send them in batches. It supports **timeit** and **count** decorators for metricating functions in elegant way. Though publishing metrics is batched, there is no guaranty ClouWatch will swallow everything. If you send > 150 TPS (can happen easily if you scale out with Lambdas), you might get throttled. Read CloudWatch documentation for limits and pricing consideration.
+This wrapper will buffer metrics first, then send them in batches. It supports **timeit** and **count** decorators for metricating functions in elegant way. Though publishing metrics is batched, there is no guaranty ClouWatch will swallow everything. If you send > [150 TPS](https://docs.aws.amazon.com/en_pv/AmazonCloudWatch/latest/APIReference/API_PutMetricData.html) 
+(can happen easily if you scale out with Lambdas), you might get throttled. Read CloudWatch documentation for limits and pricing consideration.
 
 ## Installation
 ```
-Coming...
+pip install cloudwatch-metrics-buffer
 ```
 
 ## Usage
